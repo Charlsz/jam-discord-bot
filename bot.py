@@ -47,8 +47,8 @@ LEVEL_THRESHOLDS = {
     3: {"xp": 1500},
 }
 
-XP_PER_MESSAGE = 1
-XP_BONUS_LONG_MESSAGE = 2       # bonus xp for messages with 50+ characters
+XP_PER_MESSAGE = 10
+XP_BONUS_LONG_MESSAGE = 5       # bonus xp for messages with 50+ characters
 XP_PER_REFERRAL = 50            # xp earned when someone joins through your link
 XP_COOLDOWN_SECONDS = 60        # prevents spamming for xp
 IGNORED_PREFIXES = ("!", "/", "?", ".")  # ignore bot commands
