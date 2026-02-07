@@ -548,10 +548,10 @@ async def mylink(interaction: discord.Interaction):
 
         next_level = user["level"] + 1
         if next_level in LEVEL_THRESHOLDS:
-            refs_needed = LEVEL_THRESHOLDS[next_level]["referrals"]
+            xp_needed = LEVEL_THRESHOLDS[next_level]["xp"]
             embed.add_field(
-                name=f"referrals to {ROLE_NAMES.get(next_level, f'level {next_level}')}",
-                value=f"{user['referrals']}/{refs_needed}",
+                name=f"xp to {ROLE_NAMES.get(next_level, f'level {next_level}')}",
+                value=f"{user['xp']}/{xp_needed} ({user['referrals']} referrals = {user['referrals'] * XP_PER_REFERRAL} xp)",
                 inline=True,
             )
 
