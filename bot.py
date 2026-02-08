@@ -211,13 +211,13 @@ invite_cache: dict[int, dict[str, int]] = {}
 
 
 async def sync_roles(member: discord.Member, new_level: int):
-    """add the correct role and remove outdated jam roles."""
+    """assign only the current level role, remove all lower jam roles."""
     guild = member.guild
     for lvl, role_name in ROLE_NAMES.items():
         role = discord.utils.get(guild.roles, name=role_name)
         if role is None:
             continue
-        if lvl <= new_level:
+        if lvl == new_level:
             if role not in member.roles:
                 await member.add_roles(role)
         else:
@@ -234,8 +234,8 @@ async def cache_invites(guild: discord.Guild):
     try:
         invites = await guild.invites()
         invite_cache[guild.id] = {inv.code: inv.uses for inv in invites}
-    except discord.Forbidden:
-        print(f"missing 'manage server' permission in {guild.name}, invite tracking won't work")
+    except (discord.Forbidden, discord.HTTPException) as e:
+        print(f"could not cache invites for {guild.name}: {e}")
 
 
 async def get_referral_channel(guild: discord.Guild) -> discord.TextChannel | None:
@@ -281,7 +281,8 @@ async def ensure_invite_link(member: discord.Member) -> str | None:
             unique=True,
             reason=f"auto-generated referral link for {member.display_name}",
         )
-    except discord.Forbidden:
+    except (discord.Forbidden, discord.HTTPException) as e:
+        print(f"could not create invite for {member.display_name}: {e}")
         return None
 
     save_invite_owner(invite.code, member.id)
@@ -345,16 +346,16 @@ async def generate_links_for_guild(guild: discord.Guild):
 
 @bot.event
 async def on_invite_create(invite: discord.Invite):
-    """keep cache updated when new invites are created."""
+    """just update cache locally without fetching all invites."""
     if invite.guild:
-        await cache_invites(invite.guild)
+        invite_cache.setdefault(invite.guild.id, {})[invite.code] = invite.uses
 
 
 @bot.event
 async def on_invite_delete(invite: discord.Invite):
-    """keep cache updated when invites are deleted."""
-    if invite.guild:
-        await cache_invites(invite.guild)
+    """just remove from cache locally without fetching all invites."""
+    if invite.guild and invite.guild.id in invite_cache:
+        invite_cache[invite.guild.id].pop(invite.code, None)
 
 
 @bot.event
@@ -390,18 +391,24 @@ async def on_member_join(member: discord.Member):
 
     if referrer_id is None or referrer_id == member.id:
         # still generate an invite link for the new member even if no referrer found
-        invite_url = await ensure_invite_link(member)
-        if invite_url:
-            await dm_invite_link(member, invite_url)
+        try:
+            invite_url = await ensure_invite_link(member)
+            if invite_url:
+                await dm_invite_link(member, invite_url)
+        except Exception:
+            pass
         return
 
     # record the referral
     success = add_referral(referrer_id, member.id)
 
     # generate an invite link for the new member and dm it
-    invite_url = await ensure_invite_link(member)
-    if invite_url:
-        await dm_invite_link(member, invite_url)
+    try:
+        invite_url = await ensure_invite_link(member)
+        if invite_url:
+            await dm_invite_link(member, invite_url)
+    except Exception:
+        pass
 
     if not success:
         return
@@ -451,12 +458,20 @@ async def on_thread_create(thread: discord.Thread):
 
 @bot.event
 async def on_message(message: discord.Message):
-    # ignore bots and dms
-    if message.author.bot or message.guild is None:
+    # ignore bots
+    if message.author.bot:
+        return
+
+    # get guild from thread parent if needed
+    guild = message.guild
+    if guild is None and isinstance(message.channel, discord.Thread):
+        guild = message.channel.guild
+    if guild is None:
         return
 
     # ignore command-like messages
-    if message.content.startswith(IGNORED_PREFIXES):
+    content = message.content or ""
+    if content.startswith(IGNORED_PREFIXES):
         await bot.process_commands(message)
         return
 
@@ -471,12 +486,20 @@ async def on_message(message: discord.Message):
 
     xp_cooldowns[user_id] = now
 
+    # get member object
+    member = guild.get_member(user_id)
+
     # make sure this user has an invite link (fallback if they missed the dm)
-    invite_url = await ensure_invite_link(message.author)
+    # this is non-critical, so don't let it block xp tracking
+    if member:
+        try:
+            await ensure_invite_link(member)
+        except Exception:
+            pass
 
     # calculate xp earned
     xp_earned = XP_PER_MESSAGE
-    if len(message.content) >= 50:
+    if len(content) >= 50:
         xp_earned += XP_BONUS_LONG_MESSAGE
 
     # update database
@@ -494,7 +517,8 @@ async def on_message(message: discord.Message):
         await message.channel.send(
             f"{emoji} **{message.author.display_name}** just reached **{role_name}**! (level {new_level}) {emoji}"
         )
-        await sync_roles(message.author, new_level)
+        if member:
+            await sync_roles(member, new_level)
 
     await bot.process_commands(message)
 
