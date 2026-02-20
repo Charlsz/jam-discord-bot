@@ -19,7 +19,7 @@
 
 <br/>
 
-*a community engagement bot that turns your discord server into a jam-flavored xp machine*
+*a community engagement bot with referrals, levels, and more fun easter eggs*
 
 [join the discord](https://discord.gg/5sdGUP4pG5) · [report a bug](https://github.com/wespreadjam/jam-discord-bot/issues) · [request a feature](https://github.com/wespreadjam/jam-discord-bot/issues)
 
@@ -29,9 +29,9 @@
 
 ## what is jam bot?
 
-jam bot is a discord bot that gamifies your community. it tracks messages, awards xp, manages referrals, and hands out jam-themed roles as members level up. think of it as a little engine that rewards people for actually participating.
+jam bot is a discord bot that gamifies your community. it tracks messages, awards xp, manages referrals, and hands out jam-themed roles as members level up. 
 
-it also handles onboarding — new members have to introduce themselves and share a project before they get verified. no lurkers allowed (well, fewer lurkers).
+it also handles onboarding. new members have to introduce themselves and share a project before they get verified. no lurkers allowed (well, fewer lurkers).
 
 ## how it works
 
@@ -150,6 +150,6 @@ credits to **hassan2bit bread** on discord for naming infinity jam
 
 **[join the jam](https://discord.gg/5sdGUP4pG5)**
 
-made with love and preserves
+-jia 
 
 </div>
